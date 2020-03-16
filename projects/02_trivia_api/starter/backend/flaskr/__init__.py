@@ -63,8 +63,7 @@ def create_app(test_config=None):
     return jsonify({
       'questions': questionList[start:end],
       'total_questions': len(questionQuery),
-      'categories': catties,
-      'current_category': 4 #what the??????????????????????????
+      'categories': catties
     })
 
   '''
@@ -88,7 +87,7 @@ def create_app(test_config=None):
   This removal will persist in the database and when you refresh the page. 
   '''
   @app.route('/questions/<int:id>', methods=['DELETE'])
-  def handle_questions(id):
+  def delete_question(id):
     question = Question.query.filter(Question.id == id).one_or_none()
 
     if question is None:
@@ -114,12 +113,9 @@ def create_app(test_config=None):
   def add_question():
     question = request.get_json()
     insert_question = Question(question['question'], question['answer'], question['category'], question['difficulty'])
-    if not (insert_question.question and insert_question.answer and insert_question.category and insert_question.difficulty):
-        abort(404)
-    else:
-      insert_question.insert()
+    insert_question.insert()
     return jsonify({
-      'question': "Why is a return necessary?"
+      'success': True
     })
 
   '''
@@ -132,7 +128,15 @@ def create_app(test_config=None):
   only question that include that string within their question. 
   Try using the word "title" to start. 
   '''
-
+  @app.route('/search', methods=['POST'])
+  def search_questions():
+    searchTerm = request.json.get('searchTerm', '')
+    questions = [question.format() for question in Question.query.filter(Question.question.ilike("%" + searchTerm + "%")).all()]
+    return jsonify({
+      'questions': questions,
+      'total_questions': len(questions),
+      'current_category': 4
+    })
   '''
   @TODO: 
   Create a GET endpoint to get questions based on category. 
@@ -165,16 +169,14 @@ def create_app(test_config=None):
   def get_quiz_questions():
     constraints = request.get_json()
     previous_qs = constraints['previous_questions']
-    if len(previous_qs) == 0:
-      previous_qs.append(0)#may not be necessary
-    #question = Question.format(Question.query.first()) this works - use it as template
-    quizCat = int(constraints['quiz_category'].get('id'))
+    #quizCat = int(constraints['quiz_category'].get('id'))
+    quizCat = constraints['quiz_category']
     if quizCat > 0:
-      #question = Question.query.filter(Question.category == quizCat).first()#query by category
-      question = db.session.query(Question).filter(Question.id.in_([123,456]))
+      question = Question.query.filter(Question.category == quizCat, ~Question.id.in_(previous_qs)).all()
     else:
-      question = Question.query.first()#query any category
-    response = Question.format(question)
+      question = Question.query.filter(~Question.id.in_(previous_qs)).all()#query any category
+    response = random.choice(question)
+    response = Question.format(response)
     return jsonify({
       'question': response
     })
@@ -183,7 +185,38 @@ def create_app(test_config=None):
   Create error handlers for all expected errors 
   including 404 and 422. 
   '''
-  
+  @app.errorhandler(400)
+  def bad_request(error):
+    return jsonify({
+      "success": False,
+      "error": 400,
+      "message": "Bad request"
+    }), 400
+
+  @app.errorhandler(404)
+  def page_not_found(error):
+    return jsonify({
+      "success": False,
+      "error": 404,
+      "message": "Page not found"
+    }), 404
+
+  @app.errorhandler(422)
+  def unprocessable(error):
+    return jsonify({
+      "success": False,
+      "error": 422,
+      "message": "Unprocessable"
+    }), 422
+
+  @app.errorhandler(500)
+  def server_error(error):
+    return jsonify({
+      "success": False,
+      "error": 500,
+      "message": "Server error"
+    }), 500
+
   return app
 
     
