@@ -1,14 +1,21 @@
 import os
-from flask import Flask, request, abort, jsonify
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, request, jsonify, abort
+#from sqlalchemy import exc
+import json
 from flask_cors import CORS
+#from .database.models import setup_db
+from models import setup_db
 
 def create_app(test_config=None):
-  # create and configure the app
-  app = Flask(__name__)
-  CORS(app)
+    app = Flask(__name__)
+    setup_db(app)
+    CORS(app)
 
-  return app
+    @app.route('/')
+    def generic():
+        return "I'm a basic application"
+
+    return app
 
 APP = create_app()
 
